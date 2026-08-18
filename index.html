@@ -1,0 +1,2630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Callbite eSIM Reseller Portal</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+    body {
+        background:
+            radial-gradient(circle at top left, rgba(37,99,235,.18), transparent 30%),
+            radial-gradient(circle at top right, rgba(16,185,129,.12), transparent 25%),
+            #020617;
+        color: #e5e7eb;
+        min-height: 100vh;
+    }
+
+    .glass {
+        background: rgba(15,23,42,.75);
+        border: 1px solid rgba(148,163,184,.14);
+        backdrop-filter: blur(16px);
+    }
+
+    .card {
+        background: rgba(15,23,42,.9);
+        border: 1px solid rgba(148,163,184,.14);
+        transition: .2s;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(59,130,246,.5);
+    }
+
+    .input {
+        width: 100%;
+        background: #020617;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 11px 13px;
+        color: white;
+        outline: none;
+    }
+
+    .input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59,130,246,.15);
+    }
+
+    .btn {
+        border-radius: 10px;
+        padding: 10px 15px;
+        font-weight: 600;
+        transition: .2s;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-primary {
+        background: #2563eb;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-green {
+        background: #059669;
+        color: white;
+    }
+
+    .btn-red {
+        background: #dc2626;
+        color: white;
+    }
+
+    .btn-gray {
+        background: #334155;
+        color: white;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    .toast {
+        animation: slideIn .25s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255,255,255,.25);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin .7s linear infinite;
+        display: inline-block;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+</head>
+
+<body>
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
+<header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
+
+    <div class="max-w-7xl mx-auto px-5 py-4">
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+            <div class="flex items-center gap-3">
+
+                <div class="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center font-black text-xl">
+                    C
+                </div>
+
+                <div>
+                    <h1 class="text-xl font-bold">
+                        Call<span class="text-blue-400">bite</span>
+                    </h1>
+
+                    <p class="text-xs text-slate-400">
+                        eSIM Reseller Portal
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+
+                <div class="glass rounded-xl px-4 py-2">
+                    <div class="text-xs text-slate-400">
+                        Balance
+                    </div>
+
+                    <div id="balance"
+                         class="font-bold text-emerald-400">
+                        $0.00
+                    </div>
+                </div>
+
+                <div class="glass rounded-xl px-4 py-2 flex items-center gap-2">
+
+                    <span id="statusDot"
+                          class="w-2.5 h-2.5 rounded-full bg-slate-500">
+                    </span>
+
+                    <span id="connectionStatus"
+                          class="text-sm">
+                        Disconnected
+                    </span>
+
+                </div>
+
+                <button
+                    onclick="openCredentials()"
+                    class="btn btn-gray">
+
+                    ⚙ API Credentials
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
+
+<main class="max-w-7xl mx-auto px-5 py-8">
+
+    <!-- Dashboard buttons -->
+
+    <div class="flex flex-wrap gap-2 mb-8">
+
+        <button
+            onclick="showSection('packages')"
+            class="btn btn-primary">
+            📦 Packages
+        </button>
+
+        <button
+            onclick="showSection('orders')"
+            class="btn btn-gray">
+            🛒 Order
+        </button>
+
+        <button
+            onclick="showSection('esims')"
+            class="btn btn-gray">
+            📱 eSIMs
+        </button>
+
+        <button
+            onclick="showSection('sms')"
+            class="btn btn-gray">
+            💬 SMS
+        </button>
+
+    </div>
+
+
+    <!-- =====================================================
+         PACKAGES
+    ====================================================== -->
+
+    <section id="packagesSection">
+
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
+
+            <div>
+                <h2 class="text-3xl font-bold">
+                    Data Packages
+                </h2>
+
+                <p class="text-slate-400 mt-1">
+                    Live packages from eSIM Access
+                </p>
+            </div>
+
+            <button
+                onclick="loadPackages()"
+                class="btn btn-primary">
+
+                ↻ Refresh Packages
+
+            </button>
+
+        </div>
+
+
+        <!-- Filters -->
+
+        <div class="glass rounded-2xl p-5 mb-6">
+
+            <div class="grid md:grid-cols-4 gap-4">
+
+                <div>
+                    <label class="text-xs text-slate-400">
+                        Country
+                    </label>
+
+                    <input
+                        id="countryFilter"
+                        class="input mt-1"
+                        placeholder="PK, US, JP..."
+                        maxlength="2"
+                        oninput="filterPackages()">
+                </div>
+
+
+                <div>
+                    <label class="text-xs text-slate-400">
+                        Data Type
+                    </label>
+
+                    <select
+                        id="dataTypeFilter"
+                        class="input mt-1"
+                        onchange="filterPackages()">
+
+                        <option value="">
+                            All
+                        </option>
+
+                        <option value="1">
+                            Fixed Data
+                        </option>
+
+                        <option value="2">
+                            Daily Limit
+                        </option>
+
+                        <option value="3">
+                            Daily Cut-off
+                        </option>
+
+                        <option value="4">
+                            Daily Unlimited
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div>
+                    <label class="text-xs text-slate-400">
+                        Plan Type
+                    </label>
+
+                    <select
+                        id="planTypeFilter"
+                        class="input mt-1"
+                        onchange="loadPackages()">
+
+                        <option value="BASE">
+                            BASE
+                        </option>
+
+                        <option value="TOPUP">
+                            TOPUP
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="flex items-end">
+
+                    <button
+                        onclick="clearFilters()"
+                        class="btn btn-gray w-full">
+
+                        Clear Filters
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div
+            id="packageLoading"
+            class="hidden text-center py-12">
+
+            <span class="spinner"></span>
+
+            <p class="mt-3 text-slate-400">
+                Loading packages...
+            </p>
+
+        </div>
+
+
+        <div
+            id="packageGrid"
+            class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         ORDERS
+    ====================================================== -->
+
+    <section
+        id="ordersSection"
+        class="hidden">
+
+        <div class="mb-6">
+
+            <h2 class="text-3xl font-bold">
+                Order eSIM
+            </h2>
+
+            <p class="text-slate-400">
+                Place a new eSIM order
+            </p>
+
+        </div>
+
+
+        <div class="glass rounded-2xl p-6 max-w-3xl">
+
+            <div class="grid md:grid-cols-2 gap-5">
+
+                <div>
+
+                    <label class="text-sm text-slate-400">
+                        Package Code / Slug
+                    </label>
+
+                    <input
+                        id="orderPackage"
+                        class="input mt-1"
+                        placeholder="Example: AU_1_7">
+
+                </div>
+
+
+                <div>
+
+                    <label class="text-sm text-slate-400">
+                        Quantity
+                    </label>
+
+                    <input
+                        id="orderCount"
+                        type="number"
+                        min="1"
+                        max="30"
+                        value="1"
+                        class="input mt-1">
+
+                </div>
+
+
+                <div>
+
+                    <label class="text-sm text-slate-400">
+                        Price × 10,000
+                    </label>
+
+                    <input
+                        id="orderPrice"
+                        type="number"
+                        class="input mt-1"
+                        placeholder="Example: 10000">
+
+                </div>
+
+
+                <div>
+
+                    <label class="text-sm text-slate-400">
+                        Daily Plan Days
+                    </label>
+
+                    <input
+                        id="periodNum"
+                        type="number"
+                        min="1"
+                        max="365"
+                        class="input mt-1"
+                        placeholder="Optional">
+
+                </div>
+
+            </div>
+
+
+            <div class="mt-5">
+
+                <label class="text-sm text-slate-400">
+                    Transaction ID
+                </label>
+
+                <div class="flex gap-2">
+
+                    <input
+                        id="transactionId"
+                        class="input mt-1"
+                        readonly>
+
+                    <button
+                        onclick="generateTransactionId()"
+                        class="btn btn-gray mt-1">
+
+                        Generate
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <button
+                onclick="placeOrder()"
+                id="orderButton"
+                class="btn btn-green w-full mt-6">
+
+                Place Order
+
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         ESIMS
+    ====================================================== -->
+
+    <section
+        id="esimsSection"
+        class="hidden">
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+
+            <div>
+
+                <h2 class="text-3xl font-bold">
+                    eSIM Profiles
+                </h2>
+
+                <p class="text-slate-400">
+                    Query allocated eSIM profiles
+                </p>
+
+            </div>
+
+            <button
+                onclick="loadEsims()"
+                class="btn btn-primary">
+
+                ↻ Refresh
+
+            </button>
+
+        </div>
+
+
+        <div class="glass rounded-2xl p-5 mb-6">
+
+            <div class="grid md:grid-cols-2 gap-4">
+
+                <input
+                    id="queryOrderNo"
+                    class="input"
+                    placeholder="Order Number">
+
+                <input
+                    id="queryIccid"
+                    class="input"
+                    placeholder="ICCID">
+
+            </div>
+
+        </div>
+
+
+        <div
+            id="esimGrid"
+            class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         SMS
+    ====================================================== -->
+
+    <section
+        id="smsSection"
+        class="hidden">
+
+        <div class="mb-6">
+
+            <h2 class="text-3xl font-bold">
+                Send SMS
+            </h2>
+
+            <p class="text-slate-400">
+                Send an SMS to an installed eSIM that supports SMS.
+            </p>
+
+        </div>
+
+
+        <div class="glass rounded-2xl p-6 max-w-2xl">
+
+            <label class="text-sm text-slate-400">
+                ICCID or eSIM Transaction Number
+            </label>
+
+            <input
+                id="smsIccid"
+                class="input mt-1"
+                placeholder="ICCID / esimTranNo">
+
+            <label class="text-sm text-slate-400 block mt-5">
+                Message
+            </label>
+
+            <textarea
+                id="smsMessage"
+                class="input mt-1"
+                rows="5"
+                maxlength="500"
+                placeholder="Your message..."></textarea>
+
+            <div class="text-xs text-slate-500 mt-1">
+                Maximum 500 characters.
+            </div>
+
+            <button
+                onclick="sendSms()"
+                class="btn btn-primary w-full mt-5">
+
+                Send SMS
+
+            </button>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<!-- =========================================================
+     CREDENTIAL MODAL
+========================================================= -->
+
+<div
+    id="credentialsModal"
+    class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-5">
+
+    <div class="glass rounded-2xl p-6 w-full max-w-lg">
+
+        <div class="flex items-center justify-between mb-5">
+
+            <div>
+
+                <h2 class="text-xl font-bold">
+                    API Credentials
+                </h2>
+
+                <p class="text-xs text-slate-400">
+                    eSIM Access
+                </p>
+
+            </div>
+
+            <button
+                onclick="closeCredentials()"
+                class="text-slate-400 hover:text-white text-xl">
+
+                ×
+
+            </button>
+
+        </div>
+
+
+        <label class="text-sm text-slate-400">
+            RT-AccessCode
+        </label>
+
+        <input
+            id="accessCode"
+            class="input mt-1"
+            placeholder="Enter AccessCode">
+
+
+        <label class="text-sm text-slate-400 block mt-4">
+            SecretKey
+        </label>
+
+        <div class="flex gap-2">
+
+            <input
+                id="secretKey"
+                type="password"
+                class="input mt-1"
+                placeholder="Enter SecretKey">
+
+            <button
+                onclick="toggleSecret()"
+                class="btn btn-gray mt-1">
+
+                👁
+
+            </button>
+
+        </div>
+
+
+        <div class="mt-4 p-3 rounded-xl bg-yellow-950/30 border border-yellow-800/40 text-xs text-yellow-300">
+
+            For testing, these credentials are stored locally in your browser.
+            Do not use this architecture for a public production website.
+
+        </div>
+
+
+        <div class="flex gap-3 mt-6">
+
+            <button
+                onclick="saveCredentials()"
+                class="btn btn-green flex-1">
+
+                Save & Connect
+
+            </button>
+
+            <button
+                onclick="closeCredentials()"
+                class="btn btn-gray">
+
+                Cancel
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     QR MODAL
+========================================================= -->
+
+<div
+    id="qrModal"
+    class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-5">
+
+    <div class="bg-white text-slate-900 rounded-2xl p-6 w-full max-w-md text-center">
+
+        <h2 class="text-xl font-bold mb-4">
+            eSIM Installation QR
+        </h2>
+
+        <div
+            id="qrCode"
+            class="flex justify-center mb-5">
+        </div>
+
+        <div
+            id="qrText"
+            class="text-xs break-all bg-slate-100 rounded-xl p-3">
+        </div>
+
+        <button
+            onclick="closeQr()"
+            class="btn btn-gray mt-5">
+
+            Close
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     TOASTS
+========================================================= -->
+
+<div
+    id="toastContainer"
+    class="fixed top-5 right-5 z-[100] space-y-3 w-80">
+</div>
+
+
+<script>
+
+/* ============================================================
+   CONFIGURATION
+============================================================ */
+
+const API_BASE =
+    "https://api.esimaccess.com/api/v1/open";
+
+
+/* ============================================================
+   LOCAL STORAGE
+============================================================ */
+
+function getAccessCode() {
+
+    return localStorage.getItem("callbite_access_code") || "";
+
+}
+
+
+function getSecretKey() {
+
+    return localStorage.getItem("callbite_secret_key") || "";
+
+}
+
+
+/* ============================================================
+   TOAST
+============================================================ */
+
+function toast(message, type = "info") {
+
+    const container =
+        document.getElementById("toastContainer");
+
+    const el =
+        document.createElement("div");
+
+    let cls =
+        "glass rounded-xl p-4 shadow-xl toast ";
+
+    if (type === "error") {
+        cls += "border border-red-500/40";
+    }
+
+    if (type === "success") {
+        cls += "border border-emerald-500/40";
+    }
+
+    el.className = cls;
+
+    el.innerHTML = `
+        <div class="flex gap-3">
+            <div>
+                ${
+                    type === "error"
+                    ? "✕"
+                    : type === "success"
+                    ? "✓"
+                    : "ℹ"
+                }
+            </div>
+
+            <div class="text-sm break-words">
+                ${escapeHtml(message)}
+            </div>
+        </div>
+    `;
+
+    container.appendChild(el);
+
+    setTimeout(() => {
+        el.remove();
+    }, 5000);
+
+}
+
+
+/* ============================================================
+   HTML ESCAPE
+============================================================ */
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+
+/* ============================================================
+   CREDENTIALS
+============================================================ */
+
+function openCredentials() {
+
+    document
+        .getElementById("accessCode")
+        .value = getAccessCode();
+
+    document
+        .getElementById("secretKey")
+        .value = getSecretKey();
+
+    document
+        .getElementById("credentialsModal")
+        .classList.remove("hidden");
+
+}
+
+
+function closeCredentials() {
+
+    document
+        .getElementById("credentialsModal")
+        .classList.add("hidden");
+
+}
+
+
+function toggleSecret() {
+
+    const input =
+        document.getElementById("secretKey");
+
+    input.type =
+        input.type === "password"
+        ? "text"
+        : "password";
+
+}
+
+
+function saveCredentials() {
+
+    const access =
+        document
+            .getElementById("accessCode")
+            .value
+            .trim();
+
+    const secret =
+        document
+            .getElementById("secretKey")
+            .value
+            .trim();
+
+    if (!access || !secret) {
+
+        toast(
+            "Please enter both AccessCode and SecretKey.",
+            "error"
+        );
+
+        return;
+    }
+
+    localStorage.setItem(
+        "callbite_access_code",
+        access
+    );
+
+    localStorage.setItem(
+        "callbite_secret_key",
+        secret
+    );
+
+    closeCredentials();
+
+    toast(
+        "Credentials saved. Testing API connection...",
+        "info"
+    );
+
+    testConnection();
+
+}
+
+
+/* ============================================================
+   UUID
+============================================================ */
+
+function makeUUID() {
+
+    if (crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+        .replace(/[xy]/g, function(c) {
+
+            const r =
+                Math.random() * 16 | 0;
+
+            const v =
+                c === "x"
+                ? r
+                : (r & 0x3 | 0x8);
+
+            return v.toString(16);
+
+        });
+
+}
+
+
+/* ============================================================
+   TRANSACTION ID
+============================================================ */
+
+function generateTransactionId() {
+
+    const id =
+        "CALLBITE-" +
+        Date.now() +
+        "-" +
+        Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+
+    document
+        .getElementById("transactionId")
+        .value = id;
+
+}
+
+
+/* ============================================================
+   SIGNATURE
+============================================================ */
+
+function createSignature(
+    timestamp,
+    requestId,
+    accessCode,
+    body,
+    secretKey
+) {
+
+    const signData =
+        timestamp +
+        requestId +
+        accessCode +
+        body;
+
+    return CryptoJS
+        .HmacSHA256(
+            signData,
+            secretKey
+        )
+        .toString(CryptoJS.enc.Hex)
+        .toLowerCase();
+
+}
+
+
+/* ============================================================
+   MAIN API HANDLER
+============================================================ */
+
+async function fetchEsimApi(
+    endpoint,
+    bodyParams = {}
+) {
+
+    const accessCode =
+        getAccessCode();
+
+    const secretKey =
+        getSecretKey();
+
+    if (!accessCode || !secretKey) {
+
+        openCredentials();
+
+        throw new Error(
+            "API credentials have not been configured."
+        );
+
+    }
+
+
+    /*
+       IMPORTANT:
+
+       JSON.stringify is performed ONCE.
+
+       The exact same string is used
+       both for the request body and
+       HMAC signature.
+    */
+
+    const body =
+        JSON.stringify(bodyParams || {});
+
+
+    const requestId =
+        makeUUID();
+
+    const timestamp =
+        Date.now().toString();
+
+
+    const signature =
+        createSignature(
+            timestamp,
+            requestId,
+            accessCode,
+            body,
+            secretKey
+        );
+
+
+    const url =
+        API_BASE + endpoint;
+
+
+    console.log(
+        "eSIM API REQUEST:",
+        {
+            url,
+            endpoint,
+            bodyParams,
+            requestId,
+            timestamp
+        }
+    );
+
+
+    let response;
+
+    try {
+
+        response =
+            await fetch(
+                url,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+
+                        "RT-AccessCode":
+                            accessCode,
+
+                        "RT-RequestID":
+                            requestId,
+
+                        "RT-Timestamp":
+                            timestamp,
+
+                        "RT-Signature":
+                            signature
+                    },
+
+                    body
+                }
+            );
+
+    }
+
+    catch (error) {
+
+        setConnection(false);
+
+        console.error(
+            "NETWORK ERROR:",
+            error
+        );
+
+        throw new Error(
+            "Browser could not reach eSIM Access. " +
+            "This is usually a CORS/browser restriction. " +
+            "Open DevTools → Console for the exact error."
+        );
+
+    }
+
+
+    const raw =
+        await response.text();
+
+
+    console.log(
+        "eSIM API RESPONSE:",
+        response.status,
+        raw
+    );
+
+
+    let data;
+
+    try {
+
+        data =
+            raw
+            ? JSON.parse(raw)
+            : {};
+
+    }
+
+    catch {
+
+        throw new Error(
+            `HTTP ${response.status}: API returned non-JSON response: ${raw.substring(0,300)}`
+        );
+
+    }
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            `API HTTP ${response.status}: ` +
+            (
+                data.errorMessage ||
+                data.message ||
+                raw ||
+                "Unknown API error"
+            )
+        );
+
+    }
+
+
+    if (
+        data.success === false ||
+        data.success === "false"
+    ) {
+
+        throw new Error(
+            `eSIM Access ${data.errorCode || ""}: ` +
+            (
+                data.errorMessage ||
+                "Request failed"
+            )
+        );
+
+    }
+
+
+    setConnection(true);
+
+    return data;
+
+}
+
+
+/* ============================================================
+   CONNECTION STATUS
+============================================================ */
+
+function setConnection(connected) {
+
+    const dot =
+        document.getElementById("statusDot");
+
+    const text =
+        document.getElementById("connectionStatus");
+
+    if (connected) {
+
+        dot.className =
+            "w-2.5 h-2.5 rounded-full bg-emerald-500";
+
+        text.textContent =
+            "Connected";
+
+    } else {
+
+        dot.className =
+            "w-2.5 h-2.5 rounded-full bg-red-500";
+
+        text.textContent =
+            "Disconnected";
+
+    }
+
+}
+
+
+/* ============================================================
+   BALANCE
+============================================================ */
+
+async function loadBalance() {
+
+    try {
+
+        const data =
+            await fetchEsimApi(
+                "/balance/query",
+                {}
+            );
+
+
+        const balance =
+            data?.obj?.balance ?? 0;
+
+
+        const dollars =
+            Number(balance) / 10000;
+
+
+        document
+            .getElementById("balance")
+            .textContent =
+            "$" +
+            dollars.toFixed(2);
+
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        setConnection(false);
+
+        toast(
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   TEST CONNECTION
+============================================================ */
+
+async function testConnection() {
+
+    await loadBalance();
+
+}
+
+
+/* ============================================================
+   PACKAGE API
+============================================================ */
+
+let allPackages = [];
+
+
+async function loadPackages() {
+
+    const loading =
+        document.getElementById("packageLoading");
+
+    loading.classList.remove("hidden");
+
+
+    const type =
+        document
+            .getElementById("planTypeFilter")
+            .value;
+
+
+    const country =
+        document
+            .getElementById("countryFilter")
+            .value
+            .trim()
+            .toUpperCase();
+
+
+    const dataType =
+        document
+            .getElementById("dataTypeFilter")
+            .value;
+
+
+    const body = {
+        locationCode: country,
+        type: type
+    };
+
+
+    if (dataType) {
+
+        body.dataType =
+            Number(dataType);
+
+    }
+
+
+    try {
+
+        const data =
+            await fetchEsimApi(
+                "/package/list",
+                body
+            );
+
+
+        allPackages =
+            data?.obj?.packageList || [];
+
+
+        renderPackages();
+
+        toast(
+            `${allPackages.length} packages loaded.`,
+            "success"
+        );
+
+    }
+
+    catch (error) {
+
+        toast(
+            error.message,
+            "error"
+        );
+
+    }
+
+    finally {
+
+        loading.classList.add("hidden");
+
+    }
+
+}
+
+
+/* ============================================================
+   FILTER PACKAGES
+============================================================ */
+
+function filterPackages() {
+
+    renderPackages();
+
+}
+
+
+/* ============================================================
+   RENDER PACKAGES
+============================================================ */
+
+function renderPackages() {
+
+    const grid =
+        document.getElementById("packageGrid");
+
+
+    const country =
+        document
+            .getElementById("countryFilter")
+            .value
+            .trim()
+            .toUpperCase();
+
+
+    const dataType =
+        document
+            .getElementById("dataTypeFilter")
+            .value;
+
+
+    const filtered =
+        allPackages.filter(pkg => {
+
+            const location =
+                String(
+                    pkg.location || ""
+                ).toUpperCase();
+
+
+            const countryMatch =
+                !country ||
+                location.includes(country);
+
+
+            const dataMatch =
+                !dataType ||
+                String(pkg.dataType) === dataType;
+
+
+            return countryMatch &&
+                   dataMatch;
+
+        });
+
+
+    if (!filtered.length) {
+
+        grid.innerHTML = `
+            <div class="col-span-full text-center py-16 text-slate-500">
+                No packages found.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    grid.innerHTML =
+        filtered.map(pkg => {
+
+            const price =
+                Number(pkg.price || 0) / 10000;
+
+
+            const volume =
+                formatBytes(
+                    pkg.volume
+                );
+
+
+            const location =
+                escapeHtml(
+                    pkg.location || "GLOBAL"
+                );
+
+
+            const name =
+                escapeHtml(
+                    pkg.name || pkg.slug
+                );
+
+
+            const speed =
+                escapeHtml(
+                    pkg.speed || "N/A"
+                );
+
+
+            const duration =
+                `${pkg.duration || "-"} ${pkg.durationUnit || ""}`;
+
+
+            return `
+
+                <div class="card rounded-2xl p-5">
+
+                    <div class="flex justify-between items-start">
+
+                        <div class="text-3xl">
+                            ${countryFlag(location)}
+                        </div>
+
+                        <span class="text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-300">
+                            ${escapeHtml(pkg.slug || pkg.packageCode || "")}
+                        </span>
+
+                    </div>
+
+
+                    <h3 class="font-bold mt-4">
+                        ${name}
+                    </h3>
+
+
+                    <div class="grid grid-cols-2 gap-3 mt-5 text-sm">
+
+                        <div>
+                            <div class="text-slate-500">
+                                Data
+                            </div>
+
+                            <div class="font-semibold">
+                                ${volume}
+                            </div>
+                        </div>
+
+
+                        <div>
+                            <div class="text-slate-500">
+                                Validity
+                            </div>
+
+                            <div class="font-semibold">
+                                ${duration}
+                            </div>
+                        </div>
+
+
+                        <div>
+                            <div class="text-slate-500">
+                                Speed
+                            </div>
+
+                            <div class="font-semibold">
+                                ${speed}
+                            </div>
+                        </div>
+
+
+                        <div>
+                            <div class="text-slate-500">
+                                Country
+                            </div>
+
+                            <div class="font-semibold">
+                                ${location}
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <div class="border-t border-slate-800 mt-5 pt-5 flex items-center justify-between">
+
+                        <div>
+
+                            <div class="text-xs text-slate-500">
+                                Wholesale
+                            </div>
+
+                            <div class="text-xl font-bold text-emerald-400">
+                                $${price.toFixed(2)}
+                            </div>
+
+                        </div>
+
+
+                        <button
+                            onclick='selectPackage(${JSON.stringify(pkg).replace(/'/g,"&#39;")})'
+                            class="btn btn-primary">
+
+                            Order Now
+
+                        </button>
+
+                    </div>
+
+                </div>
+            `;
+
+        }).join("");
+
+}
+
+
+/* ============================================================
+   SELECT PACKAGE
+============================================================ */
+
+function selectPackage(pkg) {
+
+    showSection("orders");
+
+    document
+        .getElementById("orderPackage")
+        .value =
+        pkg.slug ||
+        pkg.packageCode ||
+        "";
+
+
+    document
+        .getElementById("orderPrice")
+        .value =
+        pkg.price || "";
+
+
+    generateTransactionId();
+
+    toast(
+        "Package added to order form.",
+        "success"
+    );
+
+}
+
+
+/* ============================================================
+   ORDER
+============================================================ */
+
+async function placeOrder() {
+
+    const packageCode =
+        document
+            .getElementById("orderPackage")
+            .value
+            .trim();
+
+
+    const count =
+        Number(
+            document
+                .getElementById("orderCount")
+                .value
+        );
+
+
+    const price =
+        Number(
+            document
+                .getElementById("orderPrice")
+                .value
+        );
+
+
+    const periodNum =
+        Number(
+            document
+                .getElementById("periodNum")
+                .value
+        );
+
+
+    const transactionId =
+        document
+            .getElementById("transactionId")
+            .value
+            .trim();
+
+
+    if (!packageCode) {
+
+        toast(
+            "Enter a package code or slug.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    if (
+        !count ||
+        count < 1 ||
+        count > 30
+    ) {
+
+        toast(
+            "Quantity must be between 1 and 30.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    if (!transactionId) {
+
+        generateTransactionId();
+
+        return;
+
+    }
+
+
+    const item = {
+
+        packageCode,
+        count
+
+    };
+
+
+    if (price > 0) {
+
+        item.price =
+            price;
+
+    }
+
+
+    if (periodNum > 0) {
+
+        item.periodNum =
+            periodNum;
+
+    }
+
+
+    const body = {
+
+        transactionId,
+
+        packageInfoList: [
+            item
+        ]
+
+    };
+
+
+    if (price > 0) {
+
+        body.amount =
+            price * count;
+
+    }
+
+
+    const button =
+        document.getElementById("orderButton");
+
+
+    button.disabled = true;
+
+    button.innerHTML =
+        `<span class="spinner"></span> Ordering...`;
+
+
+    try {
+
+        const data =
+            await fetchEsimApi(
+                "/esim/order",
+                body
+            );
+
+
+        const orderNo =
+            data?.obj?.orderNo ||
+            "";
+
+
+        toast(
+            `Order successful: ${orderNo}`,
+            "success"
+        );
+
+
+        document
+            .getElementById("queryOrderNo")
+            .value =
+            orderNo;
+
+
+        showSection("esims");
+
+
+        setTimeout(
+            loadEsims,
+            1000
+        );
+
+
+    }
+
+    catch (error) {
+
+        toast(
+            error.message,
+            "error"
+        );
+
+    }
+
+    finally {
+
+        button.disabled = false;
+
+        button.textContent =
+            "Place Order";
+
+    }
+
+}
+
+
+/* ============================================================
+   QUERY ESIMS
+============================================================ */
+
+async function loadEsims() {
+
+    const orderNo =
+        document
+            .getElementById("queryOrderNo")
+            .value
+            .trim();
+
+
+    const iccid =
+        document
+            .getElementById("queryIccid")
+            .value
+            .trim();
+
+
+    const body = {
+
+        pager: {
+            pageNum: 1,
+            pageSize: 50
+        }
+
+    };
+
+
+    if (orderNo) {
+
+        body.orderNo =
+            orderNo;
+
+    }
+
+
+    if (iccid) {
+
+        body.iccid =
+            iccid;
+
+    }
+
+
+    try {
+
+        const data =
+            await fetchEsimApi(
+                "/esim/query",
+                body
+            );
+
+
+        const list =
+            data?.obj?.esimList || [];
+
+
+        renderEsims(list);
+
+
+    }
+
+    catch (error) {
+
+        toast(
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   RENDER ESIMS
+============================================================ */
+
+function renderEsims(list) {
+
+    const grid =
+        document.getElementById("esimGrid");
+
+
+    if (!list.length) {
+
+        grid.innerHTML = `
+            <div class="col-span-full text-center py-16 text-slate-500">
+                No eSIM profiles found.
+                <br>
+                Newly ordered profiles can take up to about 30 seconds to become available.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    grid.innerHTML =
+        list.map(esim => {
+
+            const used =
+                Number(
+                    esim.orderUsage || 0
+                );
+
+
+            const total =
+                Number(
+                    esim.totalVolume || 0
+                );
+
+
+            const percentage =
+                total
+                ? Math.min(
+                    100,
+                    Math.round(
+                        used / total * 100
+                    )
+                )
+                : 0;
+
+
+            const qr =
+                esim.qrCodeUrl || "";
+
+
+            return `
+
+                <div class="card rounded-2xl p-5">
+
+                    <div class="flex justify-between items-center">
+
+                        <div>
+
+                            <div class="text-xs text-slate-500">
+                                ICCID
+                            </div>
+
+                            <div class="font-mono text-sm">
+                                ${escapeHtml(esim.iccid || "-")}
+                            </div>
+
+                        </div>
+
+
+                        <span class="text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-300">
+                            ${escapeHtml(esim.esimStatus || "-")}
+                        </span>
+
+                    </div>
+
+
+                    <div class="mt-5 space-y-3">
+
+                        <div>
+
+                            <div class="flex justify-between text-xs">
+
+                                <span>
+                                    Usage
+                                </span>
+
+                                <span>
+                                    ${formatBytes(used)}
+                                    /
+                                    ${formatBytes(total)}
+                                </span>
+
+                            </div>
+
+
+                            <div class="h-2 bg-slate-800 rounded-full mt-2 overflow-hidden">
+
+                                <div
+                                    class="h-full bg-blue-500"
+                                    style="width:${percentage}%">
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="text-sm">
+
+                            <span class="text-slate-500">
+                                eSIM Transaction:
+                            </span>
+
+                            <span class="font-mono">
+                                ${escapeHtml(esim.esimTranNo || "-")}
+                            </span>
+
+                        </div>
+
+
+                        <div class="text-sm">
+
+                            <span class="text-slate-500">
+                                Expiration:
+                            </span>
+
+                            ${escapeHtml(esim.expiredTime || "-")}
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="grid grid-cols-2 gap-2 mt-5">
+
+                        <button
+                            onclick='showQr(${JSON.stringify(qr)})'
+                            class="btn btn-primary">
+
+                            QR Code
+
+                        </button>
+
+
+                        <button
+                            onclick="checkUsage('${escapeHtml(esim.esimTranNo || "")}')"
+                            class="btn btn-gray">
+
+                            Usage
+
+                        </button>
+
+
+                        <button
+                            onclick="suspendEsim('${escapeHtml(esim.esimTranNo || "")}')"
+                            class="btn btn-red">
+
+                            Suspend
+
+                        </button>
+
+
+                        <button
+                            onclick="unsuspendEsim('${escapeHtml(esim.esimTranNo || "")}')"
+                            class="btn btn-green">
+
+                            Unsuspend
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }).join("");
+
+}
+
+
+/* ============================================================
+   USAGE
+============================================================ */
+
+async function checkUsage(esimTranNo) {
+
+    if (!esimTranNo) {
+
+        toast(
+            "No eSIM transaction number available.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const data =
+            await fetchEsimApi(
+                "/esim/usage/query",
+                {
+                    esimTranNoList: [
+                        esimTranNo
+                    ]
+                }
+            );
+
+
+        const item =
+            data?.obj?.[0] ||
+            data?.obj?.usageList?.[0] ||
+            data?.obj;
+
+
+        toast(
+            "Usage: " +
+            formatBytes(
+                item?.dataUsage || 0
+            ),
+            "success"
+        );
+
+        console.log(
+            "Usage response:",
+            data
+        );
+
+    }
+
+    catch (error) {
+
+        toast(
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   SUSPEND
+============================================================ */
+
+async function suspendEsim(esimTranNo) {
+
+    await esimAction(
+        "/esim/suspend",
+        esimTranNo,
+        "Suspending eSIM..."
+    );
+
+}
+
+
+/* ============================================================
+   UNSUSPEND
+============================================================ */
+
+async function unsuspendEsim(esimTranNo) {
+
+    await esimAction(
+        "/esim/unsuspend",
+        esimTranNo,
+        "Unsuspending eSIM..."
+    );
+
+}
+
+
+/* ============================================================
+   GENERIC ESIM ACTION
+============================================================ */
+
+async function esimAction(
+    endpoint,
+    esimTranNo,
+    message
+) {
+
+    if (!esimTranNo) {
+
+        toast(
+            "Missing eSIM transaction number.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        toast(
+            message,
+            "info"
+        );
+
+
+        const data =
+            await fetchEsimApi(
+                endpoint,
+                {
+                    esimTranNo
+                }
+            );
+
+
+        toast(
+            "Operation completed successfully.",
+            "success"
+        );
+
+
+        console.log(
+            data
+        );
+
+
+        loadEsims();
+
+    }
+
+    catch (error) {
+
+        toast(
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   SMS
+============================================================ */
+
+async function sendSms() {
+
+    const target =
+        document
+            .getElementById("smsIccid")
+            .value
+            .trim();
+
+
+    const message =
+        document
+            .getElementById("smsMessage")
+            .value
+            .trim();
+
+
+    if (!target) {
+
+        toast(
+            "Enter ICCID or eSIM transaction number.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    if (!message) {
+
+        toast(
+            "Enter a message.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    if (message.length > 500) {
+
+        toast(
+            "SMS must be 500 characters or less.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    const body =
+        target.length > 20
+        ? {
+            esimTranNo: target,
+            message
+        }
+        : {
+            iccid: target,
+            message
+        };
+
+
+    try {
+
+        const data =
+            await fetchEsimApi(
+                "/esim/sendSms",
+                body
+            );
+
+
+        toast(
+            "SMS sent successfully.",
+            "success"
+        );
+
+
+        console.log(
+            data
+        );
+
+    }
+
+    catch (error) {
+
+        toast(
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   QR
+============================================================ */
+
+function showQr(value) {
+
+    if (!value) {
+
+        toast(
+            "QR information is not available yet.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    document
+        .getElementById("qrModal")
+        .classList.remove("hidden");
+
+
+    const container =
+        document.getElementById("qrCode");
+
+
+    container.innerHTML = "";
+
+
+    new QRCode(
+        container,
+        {
+            text: value,
+            width: 250,
+            height: 250
+        }
+    );
+
+
+    document
+        .getElementById("qrText")
+        .textContent =
+        value;
+
+}
+
+
+function closeQr() {
+
+    document
+        .getElementById("qrModal")
+        .classList.add("hidden");
+
+}
+
+
+/* ============================================================
+   UTILITIES
+============================================================ */
+
+function formatBytes(bytes) {
+
+    bytes =
+        Number(bytes || 0);
+
+
+    if (!bytes) {
+        return "0 B";
+    }
+
+
+    const units =
+        [
+            "B",
+            "KB",
+            "MB",
+            "GB",
+            "TB"
+        ];
+
+
+    const i =
+        Math.floor(
+            Math.log(bytes) /
+            Math.log(1024)
+        );
+
+
+    return (
+        bytes /
+        Math.pow(1024, i)
+    ).toFixed(
+        i === 0 ? 0 : 2
+    ) +
+    " " +
+    units[i];
+
+}
+
+
+function countryFlag(location) {
+
+    const code =
+        String(location)
+            .split(",")[0]
+            .trim()
+            .toUpperCase();
+
+
+    if (
+        code.length !== 2 ||
+        code === "!GL" ||
+        code === "!RG"
+    ) {
+
+        return "🌐";
+
+    }
+
+
+    return code
+        .split("")
+        .map(
+            c =>
+                String.fromCodePoint(
+                    127397 +
+                    c.charCodeAt(0)
+                )
+        )
+        .join("");
+
+}
+
+
+/* ============================================================
+   NAVIGATION
+============================================================ */
+
+function showSection(section) {
+
+    document
+        .getElementById("packagesSection")
+        .classList.add("hidden");
+
+    document
+        .getElementById("ordersSection")
+        .classList.add("hidden");
+
+    document
+        .getElementById("esimsSection")
+        .classList.add("hidden");
+
+    document
+        .getElementById("smsSection")
+        .classList.add("hidden");
+
+
+    if (section === "packages") {
+
+        document
+            .getElementById("packagesSection")
+            .classList.remove("hidden");
+
+    }
+
+
+    if (section === "orders") {
+
+        document
+            .getElementById("ordersSection")
+            .classList.remove("hidden");
+
+    }
+
+
+    if (section === "esims") {
+
+        document
+            .getElementById("esimsSection")
+            .classList.remove("hidden");
+
+    }
+
+
+    if (section === "sms") {
+
+        document
+            .getElementById("smsSection")
+            .classList.remove("hidden");
+
+    }
+
+}
+
+
+/* ============================================================
+   FILTER RESET
+============================================================ */
+
+function clearFilters() {
+
+    document
+        .getElementById("countryFilter")
+        .value = "";
+
+    document
+        .getElementById("dataTypeFilter")
+        .value = "";
+
+    loadPackages();
+
+}
+
+
+/* ============================================================
+   INITIALIZATION
+============================================================ */
+
+window.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+
+        generateTransactionId();
+
+
+        if (
+            getAccessCode() &&
+            getSecretKey()
+        ) {
+
+            await loadBalance();
+
+            await loadPackages();
+
+        } else {
+
+            setConnection(false);
+
+            setTimeout(
+                openCredentials,
+                500
+            );
+
+        }
+
+    }
+);
+
+</script>
+
+</body>
+</html>
