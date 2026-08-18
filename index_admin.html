@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>eSIM Access · Reseller Console</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          emerald: {
+            450: '#12b981',
+          }
+        },
+        fontFamily: {
+          mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+        boxShadow: {
+          'glow': '0 0 0 1px rgba(16,185,129,0.15), 0 8px 30px -6px rgba(16,185,129,0.25)',
+        }
+      }
+    }
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  body {
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(16,185,129,0.10), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(56,189,248,0.06), transparent),
+      #020617;
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+  .glass {
+    background: linear-gradient(180deg, rgba(15,23,42,0.65), rgba(15,23,42,0.45));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(148,163,184,0.12);
+  }
+  .glass-strong {
+    background: linear-gradient(180deg, rgba(15,23,42,0.92), rgba(2,6,23,0.92));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(148,163,184,0.14);
+  }
+  .card-hover { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+  .card-hover:hover { transform: translateY(-2px); border-color: rgba(16,185,129,0.35); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6); }
+
+  .tab-btn { position: relative; }
+  .tab-btn.active { color: #f1f5f9; }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: -13px;
+    height: 2px; background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: 2px;
+  }
+
+  .signal-dot { box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
+  .signal-dot.off { box-shadow: 0 0 0 3px rgba(248,113,113,0.15); }
+
+  .modal-backdrop { background: rgba(2,6,23,0.72); backdrop-filter: blur(4px); }
+
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    background: rgba(2,6,23,0.5);
+    border: 1px solid rgba(148,163,184,0.18);
+    color: #e2e8f0;
+  }
+  input::placeholder, textarea::placeholder { color: #64748b; }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: rgba(16,185,129,0.5); box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+  }
+
+  .progress-track { background: rgba(148,163,184,0.12); }
+  .progress-fill { background: linear-gradient(90deg, #10b981, #34d399); transition: width .4s ease; }
+  .progress-fill.warn { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .progress-fill.danger { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+  .toast-enter { animation: toastIn .25s ease-out; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  .spinner { border-top-color: #10b981; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .skeleton { background: linear-gradient(90deg, rgba(148,163,184,0.06) 25%, rgba(148,163,184,0.14) 37%, rgba(148,163,184,0.06) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
+  @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+  .kbd { border: 1px solid rgba(148,163,184,0.25); border-bottom-width: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body class="min-h-screen text-slate-100 antialiased">
+
+<!-- ============ TOAST CONTAINER ============ -->
+<div id="toastContainer" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-[min(92vw,380px)]"></div>
+
+<!-- ============ TOP BAR ============ -->
+<header class="sticky top-0 z-40 border-b border-slate-800/60 glass-strong">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-glow shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 10h.01M6 14h.01M10 10h4v4h-4z"/>
+        </svg>
+      </div>
+      <div class="min-w-0">
+        <h1 class="text-sm font-bold tracking-tight leading-none truncate">eSIM Access</h1>
+        <p class="text-[11px] text-slate-400 leading-none mt-1">Reseller Console</p>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 flex-1 justify-center">
+      <nav id="tabNav" class="flex items-center gap-6 text-sm font-medium text-slate-400"></nav>
+    </div>
+
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div id="balanceBadge" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg glass border border-slate-700/60">
+        <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span id="balanceValue" class="text-sm font-mono font-semibold text-slate-100">--.--</span>
+        <span class="text-[10px] text-slate-500 font-mono">USD</span>
+      </div>
+      <div id="connBadge" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg glass border border-slate-700/60">
+        <span id="connDot" class="w-1.5 h-1.5 rounded-full bg-red-500 signal-dot off"></span>
+        <span id="connText" class="text-[11px] font-medium text-slate-400 hidden sm:inline">Disconnected</span>
+      </div>
+      <button onclick="openCredentialsModal()" class="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-700/60 glass hover:border-emerald-500/50 hover:text-emerald-400 transition" title="API Credentials">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+  <!-- mobile tabs -->
+  <div class="md:hidden border-t border-slate-800/60 px-2 overflow-x-auto">
+    <nav id="tabNavMobile" class="flex items-center gap-4 text-sm font-medium text-slate-400 py-2 px-2 whitespace-nowrap"></nav>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+  <div id="noCredsBanner" class="hidden mb-6 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 flex items-start gap-3">
+    <svg class="w-4 h-4 text-amber-400 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    <div class="text-sm text-amber-200/90">
+      <span class="font-semibold">No API credentials configured.</span>
+      Add your <span class="font-mono text-amber-300">RT-AccessCode</span> and <span class="font-mono text-amber-300">SecretKey</span> to connect this console to your account.
+      <button onclick="openCredentialsModal()" class="underline hover:text-amber-100 ml-1">Open settings →</button>
+    </div>
+  </div>
+
+  <!-- ============ TAB PANELS ============ -->
+  <section id="panel-catalog" class="tab-panel"></section>
+  <section id="panel-orders" class="tab-panel hidden"></section>
+  <section id="panel-inventory" class="tab-panel hidden"></section>
+  <section id="panel-utilities" class="tab-panel hidden"></section>
+</main>
+
+<footer class="max-w-7xl mx-auto px-4 sm:px-6 pb-10 pt-4 text-center text-[11px] text-slate-600">
+  Requests are signed client-side with HMAC-SHA256 and sent directly from your browser to <span class="font-mono">api.esimaccess.com</span>. Credentials never leave local storage.
+</footer>
+
+<!-- ============ CREDENTIALS MODAL ============ -->
+<div id="credentialsModal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 modal-backdrop">
+  <div class="w-full max-w-md glass-strong rounded-2xl p-6 relative">
+    <button onclick="closeModal('credentialsModal')" class="absolute top-4 right-4 text-slate-500 hover:text-slate-200 transition">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="flex items-center gap-2 mb-1">
+      <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      <h2 class="text-base font-bold">API Credentials</h2>
+    </div>
+    <p class="text-xs text-slate-400 mb-5">Stored only in this browser's <span class="font-mono">localStorage</span>. Never transmitted anywhere except as signed request headers to eSIM Access.</p>
+
+    <form id="credentialsForm" class="space-y-4" onsubmit="return saveCredentials(event)">
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">RT-AccessCode</label>
+        <input id="inputAccessCode" type="text" placeholder="e.g. 2b1f5dd0f2734632a1ec8ec3b566435a" class="w-full rounded-lg px-3 py-2.5 text-sm font-mono" autocomplete="off" />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Secret Key</label>
+        <div class="relative">
+          <input id="inputSecretKey" type="password" placeholder="Your account secret key" class="w-full rounded-lg px-3 py-2.5 pr-10 text-sm font-mono" autocomplete="off" />
+          <button type="button" onclick="toggleSecretVisibility()" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+            <svg id="eyeIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Base URL</label>
+        <input id="inputBaseUrl" type="text" value="https://api.esimaccess.com/api/v1/open" class="w-full rounded-lg px-3 py-2.5 text-sm font-mono text-slate-400" />
+      </div>
+
+      <div class="flex items-center gap-2 pt-1">
+        <button type="submit" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm rounded-lg py-2.5 transition shadow-glow">Save & Connect</button>
+        <button type="button" onclick="clearCredentials()" class="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 text-sm hover:border-red-500/50 hover:text-red-400 transition">Clear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ ORDER SUCCESS MODAL ============ -->
+<div id="orderSuccessModal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 modal-backdrop">
+  <div class="w-full max-w-md glass-strong rounded-2xl p-6 relative">
+    <button onclick="closeModal('orderSuccessModal')" class="absolute top-4 right-4 text-slate-500 hover:text-slate-200 transition">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mb-4">
+      <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <h2 class="text-base font-bold mb-1">Order submitted</h2>
+    <p class="text-xs text-slate-400 mb-4">The eSIM order request was accepted. Details below.</p>
+    <div id="orderSuccessBody" class="space-y-2 text-xs font-mono bg-slate-950/50 border border-slate-800 rounded-lg p-3 max-h-56 overflow-y-auto"></div>
+    <div class="flex gap-2 mt-4">
+      <button onclick="closeModal('orderSuccessModal'); switchTab('inventory'); queryEsims();" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm rounded-lg py-2.5 transition">Look up in Inventory</button>
+      <button onclick="closeModal('orderSuccessModal')" class="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 text-sm hover:border-slate-500 transition">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ QR / INSTALL MODAL ============ -->
+<div id="qrModal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 modal-backdrop">
+  <div class="w-full max-w-sm glass-strong rounded-2xl p-6 relative">
+    <button onclick="closeModal('qrModal')" class="absolute top-4 right-4 text-slate-500 hover:text-slate-200 transition">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <h2 class="text-base font-bold mb-1">Installation details</h2>
+    <p class="text-xs text-slate-400 mb-4">Scan with the device's camera or eSIM installer.</p>
+    <div class="flex justify-center bg-white rounded-xl p-4 mb-4" id="qrCanvasWrap"></div>
+    <div id="qrDetails" class="space-y-2 text-xs font-mono bg-slate-950/50 border border-slate-800 rounded-lg p-3 break-all"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   STATE & CONSTANTS
+========================================================================= */
+const DEFAULT_BASE_URL = 'https://api.esimaccess.com/api/v1/open';
+
+const State = {
+  accessCode: localStorage.getItem('esim_access_code') || '',
+  secretKey: localStorage.getItem('esim_secret_key') || '',
+  baseUrl: localStorage.getItem('esim_base_url') || DEFAULT_BASE_URL,
+  connected: false,
+  balance: null,
+  activeTab: 'catalog',
+  packages: [],
+  packagesLoading: false,
+  filters: { country: '', dataType: 'ALL', planType: 'BASE' },
+  esims: [],
+  esimsLoading: false,
+  orderDraft: { packageCode: '', packageName: '', count: 1 },
+  orderHistory: JSON.parse(localStorage.getItem('esim_order_history') || '[]'),
+};
+
+const TABS = [
+  { id: 'catalog', label: 'Catalog' },
+  { id: 'orders', label: 'Orders' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'utilities', label: 'Utilities' },
+];
+
+/* =========================================================================
+   UTILITIES
+========================================================================= */
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function formatBytes(bytes) {
+  if (bytes === null || bytes === undefined || isNaN(bytes)) return '—';
+  bytes = Number(bytes);
+  if (bytes === 0) return '0 MB';
+  const gb = bytes / (1024 ** 3);
+  if (gb >= 1) return gb % 1 === 0 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(2)} GB`;
+  const mb = bytes / (1024 ** 2);
+  return `${mb.toFixed(0)} MB`;
+}
+
+function formatPrice(price) {
+  if (price === null || price === undefined || isNaN(price)) return '—';
+  return `$${(Number(price) / 10000).toFixed(2)}`;
+}
+
+function formatDate(v) {
+  if (!v) return '—';
+  try {
+    const d = typeof v === 'number' || /^\d+$/.test(v) ? new Date(Number(v)) : new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch { return String(v); }
+}
+
+function countryFlag(iso) {
+  if (!iso || iso.length < 2) return '🌐';
+  const code = iso.trim().toUpperCase().slice(0, 2);
+  if (!/^[A-Z]{2}$/.test(code)) return '🌐';
+  const points = [...code].map(c => 127397 + c.charCodeAt(0));
+  return String.fromCodePoint(...points);
+}
+
+function newTransactionId() {
+  return 'TXN-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function copyToClipboard(text, label = 'Copied') {
+  navigator.clipboard?.writeText(text).then(() => toast(label, 'success')).catch(() => toast('Copy failed', 'error'));
+}
+
+/* =========================================================================
+   TOAST SYSTEM
+========================================================================= */
+function toast(message, type = 'info', timeout = 4500) {
+  const container = document.getElementById('toastContainer');
+  const palette = {
+    success: { border: 'border-emerald-500/40', icon: '✓', iconBg: 'bg-emerald-500/15 text-emerald-400' },
+    error:   { border: 'border-red-500/40',     icon: '✕', iconBg: 'bg-red-500/15 text-red-400' },
+    info:    { border: 'border-sky-500/40',      icon: 'ℹ', iconBg: 'bg-sky-500/15 text-sky-400' },
+    warn:    { border: 'border-amber-500/40',    icon: '!', iconBg: 'bg-amber-500/15 text-amber-400' },
+  }[type] || {};
+  const node = el(`
+    <div class="toast-enter glass-strong rounded-xl px-3.5 py-3 border ${palette.border} shadow-lg flex items-start gap-2.5">
+      <span class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${palette.iconBg}">${palette.icon}</span>
+      <span class="text-xs leading-snug text-slate-200 pt-0.5">${escapeHtml(message)}</span>
+    </div>
+  `);
+  container.appendChild(node);
+  setTimeout(() => {
+    node.style.transition = 'opacity .25s ease, transform .25s ease';
+    node.style.opacity = '0';
+    node.style.transform = 'translateY(-6px)';
+    setTimeout(() => node.remove(), 250);
+  }, timeout);
+}
+
+/* =========================================================================
+   MODAL HELPERS
+========================================================================= */
+function openModal(id) {
+  const m = document.getElementById(id);
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') ['credentialsModal', 'orderSuccessModal', 'qrModal'].forEach(closeModal);
+});
+
+/* =========================================================================
+   CREDENTIALS
+========================================================================= */
+function openCredentialsModal() {
+  document.getElementById('inputAccessCode').value = State.accessCode;
+  document.getElementById('inputSecretKey').value = State.secretKey;
+  document.getElementById('inputBaseUrl').value = State.baseUrl;
+  openModal('credentialsModal');
+}
+
+function toggleSecretVisibility() {
+  const input = document.getElementById('inputSecretKey');
+  const isPwd = input.type === 'password';
+  input.type = isPwd ? 'text' : 'password';
+}
+
+function saveCredentials(evt) {
+  evt.preventDefault();
+  const accessCode = document.getElementById('inputAccessCode').value.trim();
+  const secretKey = document.getElementById('inputSecretKey').value.trim();
+  const baseUrl = document.getElementById('inputBaseUrl').value.trim() || DEFAULT_BASE_URL;
+
+  if (!accessCode || !secretKey) {
+    toast('Both AccessCode and SecretKey are required', 'warn');
+    return false;
+  }
+
+  State.accessCode = accessCode;
+  State.secretKey = secretKey;
+  State.baseUrl = baseUrl;
+  localStorage.setItem('esim_access_code', accessCode);
+  localStorage.setItem('esim_secret_key', secretKey);
+  localStorage.setItem('esim_base_url', baseUrl);
+
+  toast('Credentials saved locally', 'success');
+  closeModal('credentialsModal');
+  renderCredsBanner();
+  bootstrapConnection();
+  return false;
+}
+
+function clearCredentials() {
+  State.accessCode = '';
+  State.secretKey = '';
+  localStorage.removeItem('esim_access_code');
+  localStorage.removeItem('esim_secret_key');
+  document.getElementById('inputAccessCode').value = '';
+  document.getElementById('inputSecretKey').value = '';
+  setConnectionStatus(false);
+  renderCredsBanner();
+  toast('Credentials cleared', 'info');
+}
+
+function renderCredsBanner() {
+  document.getElementById('noCredsBanner').classList.toggle('hidden', !!(State.accessCode && State.secretKey));
+}
+
+function hasCredentials() {
+  return !!(State.accessCode && State.secretKey);
+}
+
+/* =========================================================================
+   SIGNATURE ENGINE + API CLIENT
+========================================================================= */
+async function fetchEsimApi(endpoint, bodyParams = {}) {
+  if (!hasCredentials()) {
+    toast('Add your API credentials first', 'warn');
+    throw new Error('MISSING_CREDENTIALS');
+  }
+
+  const timestamp = Date.now().toString();
+  const requestId = crypto.randomUUID();
+  const bodyString = JSON.stringify(bodyParams);
+  const signData = timestamp + requestId + State.accessCode + bodyString;
+  const signature = CryptoJS.HmacSHA256(signData, State.secretKey).toString(CryptoJS.enc.Hex).toLowerCase();
+
+  const url = State.baseUrl.replace(/\/$/, '') + endpoint;
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'RT-AccessCode': State.accessCode,
+        'RT-RequestID': requestId,
+        'RT-Timestamp': timestamp,
+        'RT-Signature': signature,
+      },
+      body: bodyString,
+    });
+  } catch (networkErr) {
+    setConnectionStatus(false);
+    const msg = 'Network/CORS error reaching eSIM Access API. Browser-side requests may be blocked by CORS policy — consider proxying through a backend for production use.';
+    toast(msg, 'error', 6500);
+    throw networkErr;
+  }
+
+  let json;
+  try {
+    json = await response.json();
+  } catch {
+    setConnectionStatus(false);
+    toast(`Malformed response from ${endpoint} (HTTP ${response.status})`, 'error');
+    throw new Error('BAD_JSON');
+  }
+
+  if (!response.ok || json.success === false) {
+    setConnectionStatus(response.ok);
+    const errMsg = json?.errorMsg || json?.message || `Request to ${endpoint} failed (HTTP ${response.status})`;
+    toast(errMsg, 'error', 6000);
+    const err = new Error(errMsg);
+    err.payload = json;
+    throw err;
+  }
+
+  setConnectionStatus(true);
+  return json;
+}
+
+function setConnectionStatus(connected) {
+  State.connected = connected;
+  const dot = document.getElementById('connDot');
+  const text = document.getElementById('connText');
+  dot.classList.toggle('bg-emerald-500', connected);
+  dot.classList.toggle('bg-red-500', !connected);
+  dot.classList.toggle('off', !connected);
+  text.textContent = connected ? 'Connected' : 'Disconnected';
+}
+
+/* =========================================================================
+   HEADER: BALANCE
+========================================================================= */
+async function loadBalance() {
+  if (!hasCredentials()) return;
+  const badge = document.getElementById('balanceValue');
+  badge.textContent = '···';
+  try {
+    const res = await fetchEsimApi('/balance/query', {});
+    const price = res?.obj?.balance ?? res?.obj?.amount ?? res?.data?.balance ?? null;
+    State.balance = price;
+    badge.textContent = price !== null ? formatPrice(price).replace('$', '') : '—';
+  } catch {
+    badge.textContent = '—';
+  }
+}
+
+async function bootstrapConnection() {
+  renderCredsBanner();
+  if (hasCredentials()) {
+    await loadBalance();
+  } else {
+    setConnectionStatus(false);
+  }
+}
+
+/* =========================================================================
+   TAB NAVIGATION
+========================================================================= */
+function renderTabNav() {
+  const build = (mobile) => TABS.map(t => `
+    <button data-tab="${t.id}" onclick="switchTab('${t.id}')"
+      class="tab-btn ${State.activeTab === t.id ? 'active' : ''} pb-1 hover:text-slate-200 transition ${mobile ? 'text-sm' : ''}">
+      ${t.label}
+    </button>
+  `).join('');
+  document.getElementById('tabNav').innerHTML = build(false);
+  document.getElementById('tabNavMobile').innerHTML = build(true);
+}
+
+function switchTab(tabId) {
+  State.activeTab = tabId;
+  TABS.forEach(t => document.getElementById(`panel-${t.id}`).classList.toggle('hidden', t.id !== tabId));
+  renderTabNav();
+  if (tabId === 'catalog' && State.packages.length === 0) fetchPackages();
+  if (tabId === 'inventory' && State.esims.length === 0) queryEsims();
+}
+
+/* =========================================================================
+   MODULE B — CATALOG
+========================================================================= */
+function renderCatalogPanel() {
+  const panel = document.getElementById('panel-catalog');
+  panel.innerHTML = `
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5">
+      <div>
+        <h2 class="text-lg font-bold tracking-tight">Package Catalog</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Browse data plans across regions and provision instantly.</p>
+      </div>
+      <button onclick="fetchPackages()" class="self-start sm:self-auto flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 hover:border-emerald-500/50 hover:text-emerald-400 transition">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+
+    <div class="glass rounded-xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Country (ISO code)</label>
+        <input id="filterCountry" type="text" maxlength="2" placeholder="e.g. US, JP, PK" class="w-full rounded-lg px-3 py-2 text-sm uppercase" value="${escapeHtml(State.filters.country)}" oninput="this.value = this.value.toUpperCase()" />
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Data Type</label>
+        <select id="filterDataType" class="w-full rounded-lg px-3 py-2 text-sm">
+          <option value="ALL" ${State.filters.dataType === 'ALL' ? 'selected' : ''}>All</option>
+          <option value="FIXED" ${State.filters.dataType === 'FIXED' ? 'selected' : ''}>Fixed</option>
+          <option value="DAILY" ${State.filters.dataType === 'DAILY' ? 'selected' : ''}>Daily</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Plan Type</label>
+        <select id="filterPlanType" class="w-full rounded-lg px-3 py-2 text-sm">
+          <option value="BASE" ${State.filters.planType === 'BASE' ? 'selected' : ''}>Base</option>
+          <option value="TOPUP" ${State.filters.planType === 'TOPUP' ? 'selected' : ''}>Top-up</option>
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button onclick="applyFilters()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm rounded-lg py-2 transition">Search</button>
+      </div>
+    </div>
+
+    <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  `;
+  renderCatalogGrid();
+}
+
+function applyFilters() {
+  State.filters.country = document.getElementById('filterCountry').value.trim().toUpperCase();
+  State.filters.dataType = document.getElementById('filterDataType').value;
+  State.filters.planType = document.getElementById('filterPlanType').value;
+  fetchPackages();
+}
+
+function packageSkeletons(n = 6) {
+  return Array.from({ length: n }).map(() => `
+    <div class="glass rounded-xl p-4">
+      <div class="skeleton h-5 w-16 rounded mb-3"></div>
+      <div class="skeleton h-4 w-full rounded mb-2"></div>
+      <div class="skeleton h-4 w-2/3 rounded mb-4"></div>
+      <div class="skeleton h-8 w-full rounded"></div>
+    </div>
+  `).join('');
+}
+
+async function fetchPackages() {
+  const grid = document.getElementById('catalogGrid');
+  if (!hasCredentials()) {
+    grid.innerHTML = emptyState('Connect your API credentials to load the package catalog.', 'key');
+    return;
+  }
+  State.packagesLoading = true;
+  grid.innerHTML = packageSkeletons();
+
+  const body = {};
+  if (State.filters.country) body.locationCode = State.filters.country;
+  if (State.filters.planType) body.type = State.filters.planType;
+
+  try {
+    const res = await fetchEsimApi('/package/list', body);
+    let list = res?.obj?.packageList || res?.obj?.list || res?.data || [];
+    if (!Array.isArray(list)) list = [];
+
+    if (State.filters.dataType !== 'ALL') {
+      list = list.filter(p => {
+        const isDaily = !!(p.duration && (p.dataType === 'DAILY' || p.unusedValidTime || p.volumeIsUnlimited === false && p.duration <= 1)) || (p.name || '').toLowerCase().includes('daily');
+        if (State.filters.dataType === 'DAILY') return isDaily || (p.dataType || '').toUpperCase() === 'DAILY';
+        return !isDaily && (p.dataType || '').toUpperCase() !== 'DAILY';
+      });
+    }
+
+    State.packages = list;
+    renderCatalogGrid();
+  } catch (e) {
+    grid.innerHTML = emptyState('Could not load packages. Check credentials and network connectivity, then retry.', 'alert');
+  } finally {
+    State.packagesLoading = false;
+  }
+}
+
+function emptyState(message, icon = 'inbox') {
+  const icons = {
+    inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>',
+    key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5L18 5l3 3-2.5 2.5"/>',
+    alert: '<path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>',
+    sim: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 8h4M8 12h8M8 16h8"/>',
+  }[icon] || '';
+  return `
+    <div class="col-span-full flex flex-col items-center justify-center text-center py-16 px-6 glass rounded-xl">
+      <svg class="w-9 h-9 text-slate-600 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">${icons}</svg>
+      <p class="text-sm text-slate-400 max-w-xs">${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
+function renderCatalogGrid() {
+  const grid = document.getElementById('catalogGrid');
+  if (!grid) return;
+  if (!State.packages.length) {
+    grid.innerHTML = emptyState('No packages match these filters. Try a different country or plan type.', 'sim');
+    return;
+  }
+  grid.innerHTML = State.packages.map((p, idx) => {
+    const iso = p.locationCode || p.location || (Array.isArray(p.locationNetworkList) && p.locationNetworkList[0]?.locationCode) || '';
+    const name = p.name || p.packageName || 'Data Package';
+    const code = p.packageCode || p.slug || p.id || '';
+    const volume = formatBytes(p.volume);
+    const duration = p.duration ? `${p.duration} ${p.durationUnit || 'Days'}` : '—';
+    const price = formatPrice(p.price ?? p.retailPrice);
+    const speed = (p.speed || (Array.isArray(p.locationNetworkList) && p.locationNetworkList[0]?.speed) || '4G/5G');
+    const smsSupported = p.smsStatus === 1;
+    return `
+      <div class="glass card-hover rounded-xl p-4 flex flex-col">
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl leading-none">${countryFlag(iso)}</span>
+            <div>
+              <p class="text-sm font-semibold leading-tight">${escapeHtml(iso || 'Multi')}</p>
+              <p class="text-[10px] text-slate-500 font-mono">${escapeHtml(code || '—')}</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${escapeHtml(speed)}</span>
+        </div>
+        <p class="text-sm font-medium text-slate-200 mb-3 line-clamp-2">${escapeHtml(name)}</p>
+        <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+          <div class="bg-slate-950/40 rounded-lg px-2.5 py-2">
+            <p class="text-slate-500 text-[10px]">Data</p>
+            <p class="font-mono font-semibold text-slate-100">${volume}</p>
+          </div>
+          <div class="bg-slate-950/40 rounded-lg px-2.5 py-2">
+            <p class="text-slate-500 text-[10px]">Validity</p>
+            <p class="font-mono font-semibold text-slate-100">${escapeHtml(duration)}</p>
+          </div>
+        </div>
+        ${smsSupported ? '<p class="text-[10px] text-sky-400 mb-3 flex items-center gap-1">✓ Voice / SMS enabled</p>' : ''}
+        <div class="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-slate-800/70">
+          <span class="text-base font-bold font-mono text-emerald-400">${price}</span>
+          <button onclick='prefillOrder(${JSON.stringify({ code, name }).replace(/'/g, "&#39;")})' class="text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition">Order Now</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* =========================================================================
+   MODULE C — ORDER ENGINE
+========================================================================= */
+function renderOrdersPanel() {
+  const panel = document.getElementById('panel-orders');
+  panel.innerHTML = `
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div class="lg:col-span-2">
+        <h2 class="text-lg font-bold tracking-tight mb-1">Place Order</h2>
+        <p class="text-xs text-slate-400 mb-5">Provision a single eSIM or a batch under one transaction.</p>
+
+        <form onsubmit="return submitOrder(event)" class="glass rounded-xl p-4 space-y-4">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Package Code</label>
+            <input id="orderPackageCode" type="text" required placeholder="Selected from catalog, or paste manually" value="${escapeHtml(State.orderDraft.packageCode)}" class="w-full rounded-lg px-3 py-2.5 text-sm font-mono" />
+            ${State.orderDraft.packageName ? `<p class="text-[11px] text-emerald-400 mt-1.5">${escapeHtml(State.orderDraft.packageName)}</p>` : ''}
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Quantity (batch)</label>
+              <input id="orderCount" type="number" min="1" max="50" value="${State.orderDraft.count}" class="w-full rounded-lg px-3 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Transaction ID</label>
+              <div class="flex gap-1.5">
+                <input id="orderTransactionId" type="text" readonly value="${newTransactionId()}" class="w-full rounded-lg px-3 py-2.5 text-xs font-mono text-slate-400" />
+                <button type="button" onclick="document.getElementById('orderTransactionId').value = newTransactionId()" class="shrink-0 w-9 rounded-lg border border-slate-700 hover:border-emerald-500/50 flex items-center justify-center transition" title="Regenerate">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <button type="submit" id="submitOrderBtn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm rounded-lg py-2.5 transition flex items-center justify-center gap-2">
+            <span>Submit Order</span>
+          </button>
+          <p class="text-[11px] text-slate-500">Calls <span class="font-mono text-slate-400">/esim/order</span> · signed with HMAC-SHA256 per request.</p>
+        </form>
+      </div>
+
+      <div class="lg:col-span-3">
+        <h2 class="text-lg font-bold tracking-tight mb-1">Order History</h2>
+        <p class="text-xs text-slate-400 mb-5">Locally logged submissions from this browser.</p>
+        <div id="orderHistoryList" class="space-y-2"></div>
+      </div>
+    </div>
+  `;
+  renderOrderHistory();
+}
+
+function prefillOrder(pkg) {
+  State.orderDraft.packageCode = pkg.code || '';
+  State.orderDraft.packageName = pkg.name || '';
+  switchTab('orders');
+  renderOrdersPanel();
+  toast(`Prefilled order form with ${pkg.name || pkg.code}`, 'info');
+}
+
+function renderOrderHistory() {
+  const wrap = document.getElementById('orderHistoryList');
+  if (!wrap) return;
+  if (!State.orderHistory.length) {
+    wrap.innerHTML = emptyState('No orders placed yet in this browser session.', 'inbox');
+    return;
+  }
+  wrap.innerHTML = State.orderHistory.slice().reverse().map(o => `
+    <div class="glass rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="text-xs font-mono text-slate-300 truncate">${escapeHtml(o.transactionId)}</p>
+        <p class="text-[11px] text-slate-500">${escapeHtml(o.packageCode)} × ${o.count} · ${formatDate(o.time)}</p>
+      </div>
+      <span class="text-[10px] font-semibold px-2 py-1 rounded-full ${o.status === 'ok' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'} shrink-0">
+        ${o.status === 'ok' ? 'Submitted' : 'Failed'}
+      </span>
+    </div>
+  `).join('');
+}
+
+async function submitOrder(evt) {
+  evt.preventDefault();
+  const packageCode = document.getElementById('orderPackageCode').value.trim();
+  const count = Math.max(1, parseInt(document.getElementById('orderCount').value || '1', 10));
+  const transactionId = document.getElementById('orderTransactionId').value.trim() || newTransactionId();
+  const btn = document.getElementById('submitOrderBtn');
+
+  if (!packageCode) {
+    toast('Enter a package code', 'warn');
+    return false;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full spinner"></span> Submitting…`;
+
+  const body = {
+    transactionId,
+    packageInfoList: [
+      { packageCode, count, price: 0 },
+    ],
+  };
+
+  try {
+    const res = await fetchEsimApi('/esim/order', body);
+    State.orderHistory.push({ transactionId, packageCode, count, time: Date.now(), status: 'ok' });
+    localStorage.setItem('esim_order_history', JSON.stringify(State.orderHistory.slice(-50)));
+    renderOrderHistory();
+    showOrderSuccess(res, { transactionId, packageCode, count });
+    document.getElementById('orderTransactionId').value = newTransactionId();
+    toast('Order submitted successfully', 'success');
+  } catch (e) {
+    State.orderHistory.push({ transactionId, packageCode, count, time: Date.now(), status: 'failed' });
+    localStorage.setItem('esim_order_history', JSON.stringify(State.orderHistory.slice(-50)));
+    renderOrderHistory();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Submit Order</span>';
+  }
+  return false;
+}
+
+function showOrderSuccess(res, meta) {
+  const body = document.getElementById('orderSuccessBody');
+  const orderNo = res?.obj?.orderNo || res?.obj?.orderNumber || '—';
+  const rows = {
+    'Transaction ID': meta.transactionId,
+    'Order No': orderNo,
+    'Package Code': meta.packageCode,
+    'Quantity': meta.count,
+    'Response': (res?.errorMsg || 'success'),
+  };
+  body.innerHTML = Object.entries(rows).map(([k, v]) => `
+    <div class="flex justify-between gap-3"><span class="text-slate-500">${escapeHtml(k)}</span><span class="text-slate-200 text-right break-all">${escapeHtml(v)}</span></div>
+  `).join('');
+  openModal('orderSuccessModal');
+}
+
+/* =========================================================================
+   MODULE D — INVENTORY / PROFILE MANAGEMENT
+========================================================================= */
+function renderInventoryPanel() {
+  const panel = document.getElementById('panel-inventory');
+  panel.innerHTML = `
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5">
+      <div>
+        <h2 class="text-lg font-bold tracking-tight">eSIM Inventory</h2>
+        <p class="text-xs text-slate-400 mt-0.5">All eSIMs allocated to your account.</p>
+      </div>
+      <div class="flex gap-2">
+        <input id="inventorySearch" type="text" placeholder="Filter by ICCID / Order No" class="rounded-lg px-3 py-2 text-xs font-mono w-56" />
+        <button onclick="queryEsims()" class="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 hover:border-emerald-500/50 hover:text-emerald-400 transition">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+    <div id="inventoryGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+  `;
+  renderInventoryGrid();
+}
+
+async function queryEsims() {
+  const grid = document.getElementById('inventoryGrid');
+  if (!hasCredentials()) {
+    grid.innerHTML = emptyState('Connect your API credentials to view provisioned eSIMs.', 'key');
+    return;
+  }
+  State.esimsLoading = true;
+  grid.innerHTML = packageSkeletons(4);
+  try {
+    const search = document.getElementById('inventorySearch')?.value.trim() || '';
+    const body = { pager: { pageNum: 1, pageSize: 50 } };
+    if (search) body.iccid = search;
+    const res = await fetchEsimApi('/esim/query', body);
+    let list = res?.obj?.esimList || res?.obj?.list || res?.data || [];
+    if (!Array.isArray(list)) list = [];
+    State.esims = list;
+    renderInventoryGrid();
+  } catch {
+    grid.innerHTML = emptyState('Could not load inventory. Verify credentials and try again.', 'alert');
+  } finally {
+    State.esimsLoading = false;
+  }
+}
+
+function statusBadge(status) {
+  const s = (status || '').toUpperCase();
+  const map = {
+    ACTIVE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    GOT_RESOURCE: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    SUSPENDED: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    EXPIRED: 'bg-slate-600/10 text-slate-400 border-slate-600/20',
+    CANCEL: 'bg-red-500/10 text-red-400 border-red-500/20',
+  };
+  const cls = map[s] || 'bg-slate-600/10 text-slate-400 border-slate-600/20';
+  return `<span class="text-[10px] font-semibold px-2 py-1 rounded-full border ${cls}">${escapeHtml(status || 'UNKNOWN')}</span>`;
+}
+
+function renderInventoryGrid() {
+  const grid = document.getElementById('inventoryGrid');
+  if (!grid) return;
+  if (!State.esims.length) {
+    grid.innerHTML = emptyState('No eSIMs found. Orders will appear here once provisioned.', 'sim');
+    return;
+  }
+  grid.innerHTML = State.esims.map((s, idx) => {
+    const iccid = s.iccid || '—';
+    const used = Number(s.orderUsage ?? s.usage ?? 0);
+    const total = Number(s.totalVolume ?? s.volume ?? 0);
+    const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0;
+    const barClass = pct > 90 ? 'danger' : pct > 65 ? 'warn' : '';
+    const expire = s.expiredTime || s.expireTime;
+    return `
+      <div class="glass card-hover rounded-xl p-4">
+        <div class="flex items-start justify-between mb-2">
+          <div class="min-w-0">
+            <p class="text-xs font-mono text-slate-300 truncate">${escapeHtml(iccid)}</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(s.packageName || s.orderNo || '')}</p>
+          </div>
+          ${statusBadge(s.esimStatus || s.status)}
+        </div>
+
+        <div class="mb-3">
+          <div class="flex justify-between text-[11px] text-slate-500 mb-1">
+            <span>${formatBytes(used)} used</span>
+            <span>${total ? formatBytes(total) : 'Unlimited'}</span>
+          </div>
+          <div class="h-1.5 rounded-full progress-track overflow-hidden">
+            <div class="h-full rounded-full progress-fill ${barClass}" style="width:${pct}%"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-[11px] text-slate-500 mb-3">
+          <span>Expires</span><span class="font-mono text-slate-300">${formatDate(expire)}</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5">
+          <button onclick='showQrModal(${JSON.stringify({ iccid, qr: s.qrCodeUrl || s.qrCode, ac: s.ac || s.smdpAddress, matchingId: s.matchingId }).replace(/'/g, "&#39;")})' class="text-[11px] font-medium py-2 rounded-lg border border-slate-700 hover:border-emerald-500/50 hover:text-emerald-400 transition">QR</button>
+          <button onclick="checkUsage('${escapeHtml(iccid)}')" class="text-[11px] font-medium py-2 rounded-lg border border-slate-700 hover:border-sky-500/50 hover:text-sky-400 transition">Usage</button>
+          <button onclick="switchTab('utilities'); prefillIccid('${escapeHtml(iccid)}')" class="text-[11px] font-medium py-2 rounded-lg border border-slate-700 hover:border-amber-500/50 hover:text-amber-400 transition">Manage</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function checkUsage(iccid) {
+  try {
+    const res = await fetchEsimApi('/esim/usage', { iccid });
+    const used = res?.obj?.usage ?? res?.obj?.orderUsage ?? 'n/a';
+    toast(`ICCID ${iccid}: ${typeof used === 'number' ? formatBytes(used) + ' consumed' : used}`, 'info', 6000);
+    queryEsims();
+  } catch {}
+}
+
+function showQrModal(data) {
+  const wrap = document.getElementById('qrCanvasWrap');
+  wrap.innerHTML = '';
+  const payload = data.qr || [data.ac, data.matchingId].filter(Boolean).join('$') || data.iccid;
+  new QRCode(wrap, { text: String(payload || 'N/A'), width: 200, height: 200, colorDark: '#020617', colorLight: '#ffffff' });
+
+  document.getElementById('qrDetails').innerHTML = `
+    <div class="flex justify-between gap-3"><span class="text-slate-500">ICCID</span><span class="text-slate-200">${escapeHtml(data.iccid)}</span></div>
+    <div class="flex justify-between gap-3"><span class="text-slate-500">SM-DP+ Address</span><span class="text-slate-200 text-right">${escapeHtml(data.ac || '—')}</span></div>
+    <div class="flex justify-between gap-3"><span class="text-slate-500">Matching ID</span><span class="text-slate-200 text-right">${escapeHtml(data.matchingId || '—')}</span></div>
+  `;
+  openModal('qrModal');
+}
+
+/* =========================================================================
+   MODULE E — SIM ACTIONS & MESSAGING (UTILITIES)
+========================================================================= */
+function renderUtilitiesPanel() {
+  const panel = document.getElementById('panel-utilities');
+  panel.innerHTML = `
+    <h2 class="text-lg font-bold tracking-tight mb-1">Utilities</h2>
+    <p class="text-xs text-slate-400 mb-5">Messaging, suspension controls, and top-ups for a target eSIM.</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- SMS -->
+      <div class="glass rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <h3 class="text-sm font-bold">Send SMS</h3>
+        </div>
+        <form onsubmit="return sendSms(event)" class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">ICCID</label>
+            <input id="smsIccid" type="text" required placeholder="89431..." class="w-full rounded-lg px-3 py-2 text-sm font-mono" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Message</label>
+            <textarea id="smsMessage" required maxlength="500" rows="4" placeholder="Up to 500 characters…" class="w-full rounded-lg px-3 py-2 text-sm resize-none" oninput="document.getElementById('smsCounter').textContent = this.value.length + ' / 500'"></textarea>
+            <p id="smsCounter" class="text-[10px] text-slate-500 text-right mt-1">0 / 500</p>
+          </div>
+          <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-sm rounded-lg py-2.5 transition">Send Message</button>
+        </form>
+      </div>
+
+      <!-- Suspend / Unsuspend -->
+      <div class="glass rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></svg>
+          <h3 class="text-sm font-bold">Profile Control</h3>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">ICCID</label>
+            <input id="controlIccid" type="text" placeholder="89431..." class="w-full rounded-lg px-3 py-2 text-sm font-mono" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="suspendEsim()" class="text-xs font-semibold py-2.5 rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition">Suspend</button>
+            <button onclick="unsuspendEsim()" class="text-xs font-semibold py-2.5 rounded-lg border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition">Unsuspend</button>
+          </div>
+          <p class="text-[10px] text-slate-500">Suspend pauses data connectivity without releasing the profile. Unsuspend restores it immediately.</p>
+        </div>
+      </div>
+
+      <!-- Top-up -->
+      <div class="glass rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          <h3 class="text-sm font-bold">Top-Up Packages</h3>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">ICCID</label>
+            <input id="topupIccid" type="text" placeholder="89431..." class="w-full rounded-lg px-3 py-2 text-sm font-mono" />
+          </div>
+          <button onclick="fetchTopups()" class="w-full text-xs font-semibold py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition">Browse Top-Up Plans</button>
+          <div id="topupResults" class="space-y-2 max-h-56 overflow-y-auto"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function prefillIccid(iccid) {
+  ['smsIccid', 'controlIccid', 'topupIccid'].forEach(id => {
+    const node = document.getElementById(id);
+    if (node) node.value = iccid;
+  });
+  toast(`ICCID prefilled: ${iccid}`, 'info');
+}
+
+async function sendSms(evt) {
+  evt.preventDefault();
+  const iccid = document.getElementById('smsIccid').value.trim();
+  const message = document.getElementById('smsMessage').value.trim();
+  if (!iccid || !message) { toast('ICCID and message are required', 'warn'); return false; }
+  if (message.length > 500) { toast('Message exceeds 500 characters', 'warn'); return false; }
+  try {
+    await fetchEsimApi('/esim/sms/send', { iccid, message });
+    toast('SMS sent', 'success');
+    document.getElementById('smsMessage').value = '';
+    document.getElementById('smsCounter').textContent = '0 / 500';
+  } catch {}
+  return false;
+}
+
+async function suspendEsim() {
+  const iccid = document.getElementById('controlIccid').value.trim();
+  if (!iccid) { toast('Enter an ICCID', 'warn'); return; }
+  try {
+    await fetchEsimApi('/esim/suspend', { iccid });
+    toast(`ICCID ${iccid} suspended`, 'success');
+    queryEsims();
+  } catch {}
+}
+
+async function unsuspendEsim() {
+  const iccid = document.getElementById('controlIccid').value.trim();
+  if (!iccid) { toast('Enter an ICCID', 'warn'); return; }
+  try {
+    await fetchEsimApi('/esim/unsuspend', { iccid });
+    toast(`ICCID ${iccid} unsuspended`, 'success');
+    queryEsims();
+  } catch {}
+}
+
+async function fetchTopups() {
+  const iccid = document.getElementById('topupIccid').value.trim();
+  const results = document.getElementById('topupResults');
+  if (!iccid) { toast('Enter an ICCID first', 'warn'); return; }
+  results.innerHTML = `<div class="skeleton h-10 w-full rounded-lg"></div><div class="skeleton h-10 w-full rounded-lg"></div>`;
+  try {
+    const res = await fetchEsimApi('/package/list', { type: 'TOPUP', iccid });
+    let list = res?.obj?.packageList || res?.obj?.list || res?.data || [];
+    if (!Array.isArray(list)) list = [];
+    if (!list.length) {
+      results.innerHTML = `<p class="text-[11px] text-slate-500 py-2">No top-up plans available for this ICCID.</p>`;
+      return;
+    }
+    results.innerHTML = list.map(p => `
+      <div class="flex items-center justify-between gap-2 bg-slate-950/40 rounded-lg px-3 py-2">
+        <div class="min-w-0">
+          <p class="text-xs font-medium text-slate-200 truncate">${escapeHtml(p.name || p.packageName || 'Top-up')}</p>
+          <p class="text-[10px] text-slate-500 font-mono">${formatBytes(p.volume)} · ${formatPrice(p.price)}</p>
+        </div>
+        <button onclick='prefillOrder(${JSON.stringify({ code: p.packageCode || p.slug, name: p.name || p.packageName }).replace(/'/g, "&#39;")})' class="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition">Order</button>
+      </div>
+    `).join('');
+  } catch {
+    results.innerHTML = `<p class="text-[11px] text-red-400 py-2">Failed to load top-up plans.</p>`;
+  }
+}
+
+/* =========================================================================
+   INIT
+========================================================================= */
+function init() {
+  renderTabNav();
+  renderCatalogPanel();
+  renderOrdersPanel();
+  renderInventoryPanel();
+  renderUtilitiesPanel();
+  renderCredsBanner();
+  switchTab('catalog');
+  bootstrapConnection();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
